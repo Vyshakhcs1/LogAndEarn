@@ -33,7 +33,3 @@ The shared routine catalog is seeded with:
 - Two weekly `Hair Ras` entries with the `Log for the day` schedule.
 
 Users receive all six items by default, can check individual doses, and can remove items. Catalog/profile changes should happen through a trusted admin/backend workflow; the app has no direct client write access to these tables. Users can update today's check-ins, log the day, remove active routine items, and claim their own available scratch cards through protected RPCs.
-
-## Important business rules
-
-The migration uses the coin tiers and weekly streak bonuses already present in the app's Log & Earn model. It currently uses `Asia/Kolkata` as the profile time zone. Lifeline usage is counted from the current goal's start date rather than the calendar month. Review the reward rules and configured time zone with the product owner before production.
