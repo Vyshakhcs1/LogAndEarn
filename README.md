@@ -1,97 +1,139 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Traya
 
-# Getting Started
+Traya is a React Native mobile application for Android and iOS. The current implemented flows include phone-number sign-in with Supabase OTP, a Supabase-backed Log & Earn experience, routine dose tracking, calendar history, and scratch-card rewards. Other main tabs are currently placeholders.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Technology
 
-## Step 1: Start Metro
+- React Native `0.87.1` with React `19.2.3`
+- TypeScript
+- React Navigation 7 (bottom tabs and native stack)
+- Redux Toolkit and React Redux for application state
+- Supabase JavaScript client for phone OTP authentication and backend RPC calls
+- AsyncStorage for persisted Supabase authentication sessions
+- Native Android and iOS projects managed with React Native Community CLI
+- Jest, ESLint, and TypeScript for testing and static checks
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Requirements
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- Node.js `>=22.11.0` (see `package.json`)
+- npm (the repository includes `package-lock.json`)
+- Android Studio and an Android SDK/emulator for Android development
+- Xcode and CocoaPods for iOS development on macOS
+
+Install JavaScript dependencies from the repository root:
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+npm install
 ```
 
-## Step 2: Build and run your app
+### iOS setup
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
+Install CocoaPods dependencies after cloning or whenever native dependencies change:
 
 ```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
+cd ios
 bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
 bundle exec pod install
+cd ..
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Run the app
+
+Start Metro in one terminal:
 
 ```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+npm start
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+In another terminal, launch a platform:
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+```sh
+npm run android
+```
 
-## Step 3: Modify your app
+```sh
+npm run ios
+```
 
-Now that you have successfully run the app, let's make changes!
+You can also open the native projects in Android Studio or Xcode and run them there.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## Supabase integration
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+The Supabase client is configured in [`src/shared/components/config/supabase.ts`](./src/shared/components/config/supabase.ts). It uses the project URL and a **publishable key**; only public client credentials belong in the mobile app. Never add a Supabase service-role/secret key to the app or commit one to source control.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+### Authentication
 
-## Congratulations! :tada:
+- Users enter a mobile number and request a one-time password (OTP) through Supabase Auth.
+- The current phone formatter supports 10-digit Indian numbers and 12-digit numbers beginning with `91`.
+- OTP verification creates a Supabase Auth session.
+- The Supabase client persists and refreshes the session using AsyncStorage. The app restores the session on startup and updates navigation on auth changes.
+- Supabase Auth's phone/SMS provider must be configured for the target project. OTP delivery and any test-number behavior are controlled by that project's Supabase Auth settings.
 
-You've successfully run and modified your React Native App. :partying_face:
+Authentication calls are in [`src/shared/components/config/authService.ts`](./src/shared/components/config/authService.ts); startup and authenticated navigation are handled by [`src/app/navigator/AppNavigator.tsx`](./src/app/navigator/AppNavigator.tsx).
 
-### Now what?
+### Log & Earn data and security
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+Log & Earn reads and changes are made through Supabase Postgres functions (RPCs), called by [`src/app/service/logAndEarnService.ts`](./src/app/service/logAndEarnService.ts). The app does not fetch the old mock JSON. Authenticated RPCs use `auth.uid()` to scope operations to the signed-in user. Row Level Security protects user-owned tables; privileged data changes are performed by database functions rather than direct client writes.
 
-# Troubleshooting
+The backend currently supports:
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+- Creating a new user's Log & Earn profile on the first data request.
+- Starting with one configured kit goal, zero coins, three lifelines, and six default routine entries (four daily and two weekly), with unchecked doses.
+- Reading progress, routine, coin totals, calendar history, and reward cards.
+- Updating today's dose check-ins, removing routine entries, logging a day, and claiming an available scratch card.
+- Preventing more than one daily log per user and local date. The app disables the Log button during submission and after a successful log; the database enforces the rule as well.
 
-# Learn More
+The current profile time zone default is `Asia/Kolkata`. Only the initial goal and routine catalog entries are configured by the current migrations; later goals and catalog changes require backend configuration.
 
-To learn more about React Native, take a look at the following resources:
+### Apply database migrations
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Database migrations are in [`supabase/migrations`](./supabase/migrations). Apply them in order to the Supabase project configured in the app:
+
+1. [`20261031000000_log_and_earn.sql`](./supabase/migrations/20261031000000_log_and_earn.sql) — creates the Log & Earn schema, access policies, and RPCs.
+2. [`20261031200000_log_and_earn_first_login_bootstrap.sql`](./supabase/migrations/20261031200000_log_and_earn_first_login_bootstrap.sql) — seeds the goal/routine catalogs and enables first-login setup.
+3. [`20261031210000_log_and_earn_reward_pause_defaults.sql`](./supabase/migrations/20261031210000_log_and_earn_reward_pause_defaults.sql) — fills missing reward-pause notice/button values for existing profiles; safe to run after bootstrap.
+4. [`20261101190000_enforce_daily_log_once.sql`](./supabase/migrations/20261101190000_enforce_daily_log_once.sql) — enforces the one-log-per-local-day rule at the database layer.
+
+For a beginner-friendly walkthrough, including Supabase SQL Editor steps and troubleshooting, see [`supabase/README.md`](./supabase/README.md). A migration is not applied to your hosted Supabase project just because it exists in this repository; confirm it completes successfully in the intended project's SQL Editor before testing the related feature.
+
+## Project structure
+
+```text
+src/
+  app/
+    navigator/   Navigation and route definitions
+    service/     Supabase RPC service layer
+    store/       Redux store, hooks, and slices
+  features/
+    auth/        Phone login and OTP verification
+    logAndEarn/  Routine logging, goal progress, and calendar history
+    rewards/     Scratch cards and reward display
+  shared/
+    assets/      App images and icons
+    components/  Reusable UI and Supabase client configuration
+supabase/
+  migrations/    Database schema, policies, and RPC migrations
+```
+
+## Checks
+
+Run the configured lint and test commands:
+
+```sh
+npm run lint
+npm test
+```
+
+Run the TypeScript compiler without emitting files:
+
+```sh
+npx tsc --noEmit
+```
+
+## Troubleshooting
+
+- **Supabase RPC not found:** Confirm the app's Supabase URL points to the same project where migrations were applied. Apply missing migrations and allow the PostgREST schema cache to refresh.
+- **Log & Earn is not configured:** Confirm the bootstrap migration was applied and the user is authenticated. The first successful data request should create the profile and routine.
+- **OTP not received:** Check Supabase Auth phone provider and SMS configuration, phone formatting, and the project's OTP delivery limits.
+- **iOS build issues after dependency changes:** Run `bundle exec pod install` from `ios/`, then rebuild.
+- **Native or Metro issues:** See the [React Native troubleshooting guide](https://reactnative.dev/docs/troubleshooting).
